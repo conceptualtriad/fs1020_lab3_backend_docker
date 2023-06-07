@@ -1,0 +1,32 @@
+version: '3.7'
+
+services:
+  api: #defines the api container
+    build:
+      context: . #uses the Dockerfile found in current folder
+    # command: './wait-for-it.sh db:3306 --strict --timeout=300 -- npm start'
+    command: 'npm start'
+    ports: #need to setup port mapping
+      - '${ENV_PORT}:${ENV_PORT}'
+    depends_on: #we need the database server for this container to be functional
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+
+  db:
+    image: mysql:5.7 #we are getting this from a pre-built image
+    volumes:
+      - ./data:/var/lib/mysql
+      - ./sql/create_tables.sql:/docker-entrypoint-initdb.d/create_tables.sql
+    environment: #set the environment variables as per instructions on docker hub
+      MYSQL_ROOT_PASSWORD: ${DATABASE_ROOT_PASSWORD}
+      MYSQL_USER: ${DATABASE_USER}
+      MYSQL_PASSWORD: ${DATABASE_PASSWORD}
+      MYSQL_DATABASE: ${DATABASE_NAME}
+    ports: #need to be able to connect to the db as well
+      - '9000:3306'
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost']
+      timeout: 30s
+      retries: 10
